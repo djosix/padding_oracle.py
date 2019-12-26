@@ -20,27 +20,22 @@ All you need is defining the **oracle function** to check whether the given ciph
 ```python
 #!/usr/bin/env python3
 
-import time, requests
-from padding_oracle import *  # also provide url encoding and base64 functions
+import requests, logging
+from padding_oracle import *
 
+url = 'http://some-website.com/decrypt'
 sess = requests.Session()
 
-cipher = b'[______IV______][____Cipher____]'  # decrypted plain text will be 16 bytes
+def oracle(cipher):
+    r = sess.post(url, data={'cipher': base64_encode(cipher)})
+    assert 'SUCCESS' in r.text or 'FAILED' in r.text
+    return 'SUCCESS' in r.text
+
+cipher = b'[______IV______][___Block_1____][___Block_2____]'
 block_size = 16
+num_threads = 64
 
-@padding_oracle(cipher, block_size, num_threads=64)
-def oracle(cipher):   # return True if the cipher can be correctly decrypted
-    while True:
-        try:
-            text = sess.get('https://example.com/decrypt',
-                            params={'cipher': base64_encode(cipher)}).text
-            assert 'YES' in text or 'NO' in text  # check if the request failed
-            break
-        except:
-            print('[!] request failed')
-            time.sleep(1)
-            continue
-    return 'YES' in text
+plaintext = padding_oracle(cipher, block_size, oracle, num_threads, log_level=logging.DEBUG)
 
-print(oracle)   # b'FLAG{XXXXXXXX}\x02\x02'
+print(remove_padding(plaintext).decode())
 ```
