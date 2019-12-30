@@ -2,7 +2,7 @@ import logging
 import base64
 import urllib.parse
 
-from typing import Union
+from typing import Union, Callable
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -53,16 +53,16 @@ def remove_padding(data: Union[str, bytes]):
 
 
 
-def _dummy_oracle(cipher):
+def _dummy_oracle(cipher: bytes) -> bool:
     raise NotImplementedError('You must implement the oracle function')
 
 
-def padding_oracle(cipher,
-                   block_size,
-                   oracle=_dummy_oracle,
-                   num_threads=1,
-                   log_level=logging.INFO,
-                   null=b' '):
+def padding_oracle(cipher: bytes,
+                   block_size: int,
+                   oracle: Callable[[bytes], bool]=_dummy_oracle,
+                   num_threads: int=1,
+                   log_level: int=logging.INFO,
+                   null: bytes=b' ') -> bytes:
     # Check the oracle function
     assert callable(oracle), 'the oracle function should be callable'
     assert oracle.__code__.co_argcount == 1, 'expect oracle function with only 1 argument'
