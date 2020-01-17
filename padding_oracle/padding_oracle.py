@@ -90,7 +90,7 @@ def padding_oracle(cipher: bytes,
                 'oracles at block[{}][{}] -> {}'.format(i, block_size - j, oracle_hits))
 
             if len(oracle_hits) != 1:
-                logfmt = 'at block[{}][{}]: expect only one positive result, got {}. (skipped)'
+                logfmt = 'at block[{}][{}]: expect only one hit, got {}. (skipped)'
                 logger.error(logfmt.format(i, block_size-j, len(oracle_hits)))
                 return
 
