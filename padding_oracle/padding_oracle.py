@@ -37,13 +37,9 @@ def remove_padding(data: Union[str, bytes]):
     return data[:-data[-1]]
 
 
-def _dummy_oracle(cipher: bytes) -> bool:
-    raise NotImplementedError('You must implement the oracle function')
-
-
 def padding_oracle(cipher: bytes,
                    block_size: int,
-                   oracle: Callable[[bytes], bool] = _dummy_oracle,
+                   oracle: Callable[[bytes], bool],
                    num_threads: int = 1,
                    log_level: int = logging.INFO,
                    null: bytes = b' ') -> bytes:
@@ -55,7 +51,6 @@ def padding_oracle(cipher: bytes,
     logger = logging.getLogger('padding_oracle')
     logger.setLevel(log_level)
     formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
-    # formatter = logging.Formatter('[%(asctime)s][%(name)s][%(levelname)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     logger.addHandler(handler)
