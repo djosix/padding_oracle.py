@@ -32,24 +32,20 @@ Tested on [0x09] Cathub Party from EDU-CTF:
 All you need is defining the **oracle function** to check whether the given cipher is correctly decrypted.
 
 ```python
-#!/usr/bin/env python3
-
-import requests, logging
 from padding_oracle import *
 
-url = 'http://some-website.com/decrypt'
+import requests
 sess = requests.Session()
 
 def oracle(cipher):
-    r = sess.post(url, data={'cipher': base64_encode(cipher)})
+    r = sess.post('http://some-website.com/decrypt', data={'cipher': base64_encode(cipher)})
     assert 'SUCCESS' in r.text or 'FAILED' in r.text
     return 'SUCCESS' in r.text
 
-cipher = b'[______IV______][___Block_1____][___Block_2____]'
-block_size = 16
-num_threads = 64
+cipher = b'[      IV      ][    Block 1   ][    Block 2   ]'
+plaintext = padding_oracle(cipher,  # cipher bytes      (required)
+                           16,      # block size        (required)
+                           oracle,  # oracle function   (required)
+                           64)      # number of threads
 
-plaintext = padding_oracle(cipher, block_size, oracle, num_threads, log_level=logging.DEBUG)
-
-print(remove_padding(plaintext).decode())
 ```
