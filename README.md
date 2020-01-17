@@ -1,6 +1,20 @@
 # padding_oracle.py
 
-Extremely fast threaded [padding oracle](http://server.maojui.me/Crypto/Padding_oracle_attack/) automation script for Python >= 3.7.
+Extremely fast threaded [padding oracle](http://server.maojui.me/Crypto/Padding_oracle_attack/) automation script for Python 3.
+
+## Install
+
+Installing from PyPI:
+
+```shell
+pip3 install -U padding_oracle
+```
+
+Or, installing from GitHub:
+
+```shell
+pip3 install -U git+https://github.com/djosix/padding_oracle.py.git
+```
 
 ## Performance
 
