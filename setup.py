@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='padding_oracle',
-    version='0.1.2',
+    version='0.1.3',
     author='Yuankui Lee',
     author_email='toregnerate@gmail.com',
     description='Threaded padding oracle automation.',
