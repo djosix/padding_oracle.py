@@ -72,16 +72,19 @@ def padding_oracle(cipher: bytes,
         oracle      (function)  a function: oracle(cipher: bytes) -> bool
         num_threads (int)       how many oracle functions will be run in parallel (default: 1)
         log_level   (int)       log level (default: logging.INFO)
-        null        (bytes)     the null byte if the (default: b' ')
+        null        (bytes)     the default byte when plaintext are not set (default: b' ')
 
     Returns:
         plaintext   (bytes)     the decrypted plaintext
     '''
 
-    # Check the oracle function
+    # Check args
     assert callable(oracle), 'the oracle function should be callable'
     assert oracle.__code__.co_argcount == 1, 'expect oracle function with only 1 argument'
+    assert isinstance(cipher, bytes), 'cipher should have type bytes'
+    assert isinstance(block_size, int), 'block_size should have type int'
     assert len(cipher) % block_size == 0, 'cipher length should be multiple of block size'
+    assert 1 <= num_threads <= 1000, 'num_threads should be in [1, 1000]'
     assert isinstance(null, bytes), 'expect null with type bytes'
     assert len(null) == 1, 'null byte should have length of 1'
 
@@ -97,7 +100,7 @@ def padding_oracle(cipher: bytes,
             logger.debug('error details at block[{}][{}]: ', i, j, traceback.format_exc())
         return False
 
-    # The plaintext bytes list to save the decrypted data
+    # The plaintext bytes list to store the decrypted data
     plaintext = [null] * (len(cipher) - block_size)
 
     # Update the decrypted plaintext list
@@ -145,14 +148,12 @@ def padding_oracle(cipher: bytes,
             _update_plaintext(i * block_size - j, bytes([p]))
 
             for n in range(j):
-                guess_list[-n-1] ^= j
-                guess_list[-n-1] ^= j + 1
+                guess_list[-n-1] ^= j ^ (j + 1)
 
     blocks = []
 
     for i in range(0, len(cipher), block_size):
-        j = i + block_size
-        blocks.append(cipher[i:j])
+        blocks.append(cipher[i:i + block_size])
 
     logger.debug('blocks: {}'.format(blocks))
 
