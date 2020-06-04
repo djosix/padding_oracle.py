@@ -26,18 +26,19 @@ from typing import Union
 
 __all__ = [
     'base64_encode', 'base64_decode',
-    'urlencode', 'urldecode'
+    'urlencode', 'urldecode',
+    'to_bytes', 'to_str'
 ]
 
 
-def _to_bytes(data: Union[str, bytes]):
+def to_bytes(data: Union[str, bytes]):
     if isinstance(data, str):
         data = data.encode()
     assert isinstance(data, bytes)
     return data
 
 
-def _to_str(data):
+def to_str(data):
     if isinstance(data, bytes):
         data = data.decode()
     elif isinstance(data, str):
@@ -48,20 +49,20 @@ def _to_str(data):
 
 
 def base64_decode(data: Union[str, bytes]) -> bytes:
-    data = _to_bytes(data)
+    data = to_bytes(data)
     return base64.b64decode(data)
 
 
 def base64_encode(data: Union[str, bytes]) -> str:
-    data = _to_bytes(data)
+    data = to_bytes(data)
     return base64.b64encode(data).decode()
 
 
 def urlencode(data: Union[str, bytes]) -> str:
-    data = _to_bytes(data)
+    data = to_bytes(data)
     return urllib.parse.quote(data)
 
 
 def urldecode(data: str) -> bytes:
-    data = _to_str(data)
+    data = to_str(data)
     return urllib.parse.unquote_plus(data)
