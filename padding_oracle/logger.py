@@ -20,7 +20,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-from .legacy import padding_oracle
-from .encoding import urlencode, urldecode, base64_encode, base64_decode, to_bytes, to_str
-from .solver import Solver, solve, plaintext_list_to_bytes, remove_padding
-from .logger import get_logger
+import logging
+
+default_stream_handler = logging.StreamHandler()
+default_stream_handler.setFormatter(logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s'))
+
+def get_logger(name='padding_oracle',
+               level=logging.INFO,
+               handlers=[default_stream_handler]):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+    for handler in handlers:
+        logger.addHandler(handler)
+    return logger
