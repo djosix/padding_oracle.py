@@ -1,5 +1,5 @@
 '''
-Copyright (c) 2020 Yuankui Lee
+Copyright (c) 2021 Yuankui Lee
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,49 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-import base64
-import urllib.parse
-from typing import Union
-
-__all__ = [
-    'base64_encode', 'base64_decode',
-    'urlencode', 'urldecode',
-    'to_bytes', 'to_str'
-]
-
-
-def to_bytes(data: Union[str, bytes]):
-    if isinstance(data, str):
-        data = data.encode()
-    assert isinstance(data, bytes)
-    return data
-
-
-def to_str(data):
-    if isinstance(data, bytes):
-        data = data.decode()
-    elif isinstance(data, str):
-        pass
-    else:
-        data = str(data)
-    return data
-
-
-def base64_decode(data: Union[str, bytes]) -> bytes:
-    data = to_bytes(data)
-    return base64.b64decode(data)
-
-
-def base64_encode(data: Union[str, bytes]) -> str:
-    data = to_bytes(data)
-    return base64.b64encode(data).decode()
-
-
-def urlencode(data: Union[str, bytes]) -> str:
-    data = to_bytes(data)
-    return urllib.parse.quote(data)
-
-
-def urldecode(data: str) -> bytes:
-    data = to_str(data)
-    return urllib.parse.unquote_plus(data)
+from .legacy import padding_oracle
+from .encoding import urlencode, urldecode, base64_encode, base64_decode, to_bytes, to_str
+from .solver import Solver, solve, plaintext_list_to_bytes, remove_padding
+from .logger import get_logger
