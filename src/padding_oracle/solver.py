@@ -52,7 +52,7 @@ def remove_padding(data: Union[str, bytes]):
 
 
 def plaintext_list_to_bytes(plaintext_list, unknown=b' '):
-    plaintext_bytes = bytes(unknown if b is None else b
+    plaintext_bytes = bytes(ord(unknown) if b is None else b
                             for b in plaintext_list)
     return plaintext_bytes
 
@@ -61,7 +61,7 @@ def solve(**kwargs):
     cipher = kwargs.pop('cipher')
     unknown = kwargs.pop('unknown', b' ')
     solver = Solver(**kwargs)
-    plaintext = plaintext_list_to_bytes(solver.solve(cipher))
+    plaintext = plaintext_list_to_bytes(solver.solve(cipher), unknown)
     plaintext = remove_padding(plaintext)
     return plaintext
 
