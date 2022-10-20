@@ -72,4 +72,8 @@ from padding_oracle.encoding import (
 )
 ```
 
+## License
+
+This project is licensed under the terms of the MIT license.
+
 <!-- PiuPiuPiu -->
