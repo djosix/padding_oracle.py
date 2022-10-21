@@ -13,28 +13,28 @@ class VulnerableCryptor:
     def encrypt(self, plaintext):
         padder = self.padding.padder()
         plaintext = padder.update(plaintext) + padder.finalize()
-        
+
         iv = os.urandom(self.block_size)
         encryptor = Cipher(algorithms.AES(self.key), modes.CBC(iv)).encryptor()
         ciphertext = encryptor.update(plaintext) + encryptor.finalize()
-                
+
         return iv + ciphertext
 
     def decrypt(self, ciphertext):
         iv = ciphertext[:self.block_size]
         ciphertext = ciphertext[self.block_size:]
-        
+
         decryptor = Cipher(algorithms.AES(self.key), modes.CBC(iv)).decryptor()
         plaintext = decryptor.update(ciphertext) + decryptor.finalize()
-        
+
         unpadder = self.padding.unpadder()
         unpadded = unpadder.update(plaintext) + unpadder.finalize()
-        
+
         return unpadded
 
     def oracle(self, data):
         try:
             self.decrypt(data)
             return True
-        except:
+        except Exception:
             return False

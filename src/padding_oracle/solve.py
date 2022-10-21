@@ -22,7 +22,7 @@ SOFTWARE.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, NamedTuple, Set, Union, List
+from typing import Callable, NamedTuple, Set, Union, List
 
 from .encoding import to_bytes
 
@@ -33,15 +33,18 @@ __all__ = [
     'remove_padding',
 ]
 
+
 class Pass(NamedTuple):
     block_index: int
     index: int
     byte: int
 
+
 class Fail(NamedTuple):
     block_index: int
     message: str
     is_critical: bool = False
+
 
 class Done(NamedTuple):
     block_index: int
@@ -54,25 +57,27 @@ ResultType = Union[Pass, Fail, Done]
 OracleFunc = Callable[[bytes], bool]
 ResultCallback = Callable[[ResultType], bool]
 PlainTextCallback = Callable[[List[int]], bool]
- 
+
 
 class Context(NamedTuple):
     block_size: int
     oracle: OracleFunc
-    
-    executor: ThreadPoolExecutor 
+
+    executor: ThreadPoolExecutor
     loop: asyncio.AbstractEventLoop
-    
+
     tasks: Set[asyncio.Task[ResultType]]
 
     latest_plaintext: List[int]
     plaintext: List[int]
-    
+
     result_callback: ResultCallback
     plaintext_callback: PlainTextCallback
 
+
 def dummy_callback(*a, **ka):
     pass
+
 
 def solve(ciphertext: bytes,
           block_size: int,
@@ -87,6 +92,7 @@ def solve(ciphertext: bytes,
                          result_callback, plaintext_callback)
     return loop.run_until_complete(future)
 
+
 async def solve_async(ciphertext: bytes,
                       block_size: int,
                       oracle: OracleFunc,
@@ -96,42 +102,46 @@ async def solve_async(ciphertext: bytes,
                       ) -> List[int]:
 
     ciphertext = list(ciphertext)
-    assert len(ciphertext) % block_size == 0, \
-        'ciphertext length must be a multiple of block_size'
-    assert len(ciphertext) // block_size > 1, \
-        'cannot solve with only one block'
+
+    if not len(ciphertext) % block_size == 0:
+        raise ValueError('ciphertext length must be a multiple of block_size')
+    if not len(ciphertext) // block_size > 1:
+        raise ValueError('cannot solve with only one block')
 
     ctx = create_solve_context(ciphertext, block_size, oracle, parallel,
                                result_callback, plaintext_callback)
 
     while True:
-        done_tasks, _ = await asyncio.wait(ctx.tasks, return_when=asyncio.FIRST_COMPLETED)
-        
+        done_tasks, _ = await asyncio.wait(ctx.tasks,
+                                           return_when=asyncio.FIRST_COMPLETED)
+
         for task in done_tasks:
             result = await task
-            
+
             ctx.result_callback(result)
             ctx.tasks.remove(task)
-            
+
             if isinstance(result, Pass):
-                update_latest_plaintext(ctx, result.block_index, result.index, result.byte)
+                update_latest_plaintext(
+                    ctx, result.block_index, result.index, result.byte)
             if isinstance(result, Done):
                 update_plaintext(ctx, result.block_index, result.C0, result.X1)
-        
+
         if len(ctx.tasks) == 0:
             break
-    
+
     # Check if any block failed
     error_block_indices = set()
-    
+
     for i, byte in enumerate(ctx.plaintext):
         if byte is None:
             error_block_indices.add(i // block_size + 1)
-            
+
     for idx in error_block_indices:
         result_callback(Fail(idx, f'cannot decrypt cipher block {idx}', True))
-        
+
     return ctx.plaintext
+
 
 def create_solve_context(ciphertext, block_size, oracle, parallel,
                          result_callback, plaintext_callback) -> Context:
@@ -143,30 +153,27 @@ def create_solve_context(ciphertext, block_size, oracle, parallel,
 
     plaintext = [None] * (len(cipher_blocks) - 1) * block_size
     latest_plaintext = plaintext.copy()
-    
+
     executor = ThreadPoolExecutor(parallel)
     loop = asyncio.get_running_loop()
     ctx = Context(block_size, oracle, executor, loop, tasks,
                   latest_plaintext, plaintext,
                   result_callback, plaintext_callback)
-    
+
     for i in range(1, len(cipher_blocks)):
         run_block_task(ctx, i, cipher_blocks[i-1], cipher_blocks[i], [])
 
     return ctx
+
 
 def run_block_task(ctx: Context, block_index, C0, C1, X1):
     future = solve_block(ctx, block_index, C0, C1, X1)
     task = ctx.loop.create_task(future)
     ctx.tasks.add(task)
 
-async def solve_block(
-    ctx: Context,
-    block_index: int,
-    C0: List[int],
-    C1: List[int],
-    X1: List[int] = [],
-) -> ResultType:
+
+async def solve_block(ctx: Context, block_index: int, C0: List[int],
+                      C1: List[int], X1: List[int] = []) -> ResultType:
     # X1 = decrypt(C1)
     # P1 = xor(C0, X1)
 
@@ -195,45 +202,55 @@ async def solve_block(
     for byte in hits:
         X1_test = [byte ^ padding, *X1]
         run_block_task(ctx, block_index, C0, C1, X1_test)
-        
+
     return Pass(block_index, index, byte ^ padding ^ C0[index])
 
-async def get_oracle_hits(ctx: Context, C0: List[int], C1: List[int], index: int):
-    
+
+async def get_oracle_hits(ctx: Context, C0: List[int], C1: List[int],
+                          index: int):
+
     C0 = C0.copy()
     futures = {}
-    
+
     for byte in range(256):
         C0[index] = byte
         ciphertext = bytes(C0 + C1)
         futures[byte] = ctx.loop.run_in_executor(
             ctx.executor, ctx.oracle, ciphertext)
-        
+
     hits = []
-    
+
     for byte, future in futures.items():
         is_valid = await future
         if is_valid:
             hits.append(byte)
-            
+
     return hits
 
-def update_latest_plaintext(ctx: Context, block_index: int, index: int, byte: int):
+
+def update_latest_plaintext(ctx: Context, block_index: int, index: int,
+                            byte: int):
+
     i = (block_index - 1) * ctx.block_size + index
     ctx.latest_plaintext[i] = byte
     ctx.plaintext_callback(ctx.latest_plaintext)
 
-def update_plaintext(ctx: Context, block_index: int, C0: List[int], X1: List[int]):
+
+def update_plaintext(ctx: Context, block_index: int, C0: List[int],
+                     X1: List[int]):
+
     assert len(C0) == len(X1) == ctx.block_size
     block = compute_plaintext(C0, X1)
-    
+
     i = (block_index - 1) * ctx.block_size
     ctx.latest_plaintext[i:i+ctx.block_size] = block
     ctx.plaintext[i:i+ctx.block_size] = block
     ctx.plaintext_callback(ctx.plaintext)
 
+
 def compute_plaintext(C0: List[int], X1: List[int]):
     return [c ^ x for c, x in zip(C0, X1)]
+
 
 def convert_to_bytes(byte_list: List[int], replacement=b' '):
     '''
@@ -248,6 +265,7 @@ def convert_to_bytes(byte_list: List[int], replacement=b' '):
             byte = ord(replacement)
         byte_list[i] = byte
     return bytes(byte_list)
+
 
 def remove_padding(data: Union[str, bytes, List[int]]) -> bytes:
     '''

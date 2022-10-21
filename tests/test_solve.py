@@ -8,16 +8,18 @@ from .cryptor import VulnerableCryptor
 
 VERBOSE = False
 
+
 def _test_solve(data_size):
     crypter = VulnerableCryptor()
-    
+
     plaintext = os.urandom(data_size)
     ciphertext = crypter.encrypt(plaintext)
-    
+
     decrypted = solve(list(ciphertext), crypter.block_size, crypter.oracle)
     decrypted = remove_padding(decrypted)
-    
+
     assert plaintext == decrypted, 'decryption failed'
+
 
 def test_solve_basic():
     sizes = [0, 1, 15, 16, 17]
@@ -25,7 +27,8 @@ def test_solve_basic():
         if VERBOSE:
             print('test_solve_basic', size)
         _test_solve(size)
-        
+
+
 def test_solve_many_sizes():
     with ProcessPoolExecutor(mp.cpu_count()) as executor:
         futures = []
@@ -36,6 +39,7 @@ def test_solve_many_sizes():
                 print('test_solve_many_sizes', size)
             future.result()
 
+
 def test_solve_random_15():
     size = 15
     with ProcessPoolExecutor(mp.cpu_count()) as executor:
@@ -44,6 +48,7 @@ def test_solve_random_15():
             if VERBOSE:
                 print('test_solve_random_15', size)
             future.result()
+
 
 if __name__ == '__main__':
     VERBOSE = True

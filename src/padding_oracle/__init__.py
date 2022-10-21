@@ -27,3 +27,16 @@ from .encoding import (
     to_bytes, to_str,
 )
 from .legacy import padding_oracle
+
+__all__ = [
+    'solve',
+    'convert_to_bytes',
+    'remove_padding',
+    'padding_oracle',
+    'urlencode',
+    'urldecode',
+    'base64_encode',
+    'base64_decode',
+    'to_bytes',
+    'to_str',
+]
