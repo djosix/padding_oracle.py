@@ -20,7 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+from .solve import solve, convert_to_bytes, remove_padding
+from .encoding import (
+    urlencode, urldecode,
+    base64_encode, base64_decode,
+    to_bytes, to_str,
+)
 from .legacy import padding_oracle
-from .encoding import urlencode, urldecode, base64_encode, base64_decode, to_bytes, to_str
-from .solver import Solver, solve, plaintext_list_to_bytes, remove_padding
-from .logger import get_logger

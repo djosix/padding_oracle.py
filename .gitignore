@@ -4,3 +4,4 @@ build/
 .DS_Store
 *.pyc
 *.egg-info
+.pytest_cache

