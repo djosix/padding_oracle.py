@@ -155,7 +155,7 @@ def create_solve_context(ciphertext, block_size, oracle, parallel,
     latest_plaintext = plaintext.copy()
 
     executor = ThreadPoolExecutor(parallel)
-    loop = asyncio.get_running_loop()
+    loop = asyncio.get_event_loop()
     ctx = Context(block_size, oracle, executor, loop, tasks,
                   latest_plaintext, plaintext,
                   result_callback, plaintext_callback)
