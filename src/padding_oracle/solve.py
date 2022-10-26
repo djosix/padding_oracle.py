@@ -22,7 +22,7 @@ SOFTWARE.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, NamedTuple, Set, Union, List
+from typing import Awaitable, Callable, NamedTuple, Set, Union, List
 
 from .encoding import to_bytes
 
@@ -66,7 +66,7 @@ class Context(NamedTuple):
     executor: ThreadPoolExecutor
     loop: asyncio.AbstractEventLoop
 
-    tasks: Set[asyncio.Task[ResultType]]
+    tasks: Set[Awaitable[ResultType]]
 
     latest_plaintext: List[int]
     plaintext: List[int]
