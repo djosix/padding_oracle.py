@@ -87,7 +87,7 @@ def solve(ciphertext: bytes,
           plaintext_callback: PlainTextCallback = dummy_callback,
           ) -> List[int]:
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     future = solve_async(ciphertext, block_size, oracle, parallel,
                          result_callback, plaintext_callback)
     return loop.run_until_complete(future)
