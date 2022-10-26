@@ -1,0 +1,3 @@
+# test dependencies
+pytest>=7, <8
+cryptography>=36, <37

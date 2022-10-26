@@ -1,5 +1,7 @@
 # padding_oracle.py
 
+![python-package-badge](https://github.com/djosix/padding_oracle.py/actions/workflows/python-package.yml/badge.svg)
+
 Fast threaded [padding oracle](https://en.wikipedia.org/wiki/Padding_oracle_attack) attack automation script for Python 3.
 
 ## Install
