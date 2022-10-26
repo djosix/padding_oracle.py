@@ -47,10 +47,10 @@ def padding_oracle(ciphertext: Union[bytes, str],
     wether the ciphertext can be decrypted successfully.
 
     Args:
-        cipher         (bytes|str) the cipher you want to decrypt
-        block_size     (int)       block size (the cipher length should be
+        ciphertext     (bytes|str) the ciphertext you want to decrypt
+        block_size     (int)       block size (the ciphertext length should be
                                    multiple of this)
-        oracle         (function)  a function: oracle(cipher: bytes) -> bool
+        oracle         (function)  a function: oracle(ciphertext: bytes) -> bool
         num_threads    (int)       how many oracle functions will be run in
                                    parallel (default: 1)
         log_level      (int)       log level (default: logging.INFO)
@@ -67,11 +67,11 @@ def padding_oracle(ciphertext: Union[bytes, str],
     if not callable(oracle):
         raise TypeError('the oracle function should be callable')
     if not isinstance(ciphertext, (bytes, str)):
-        raise TypeError('cipher should have type bytes')
+        raise TypeError('ciphertext should have type bytes')
     if not isinstance(block_size, int):
         raise TypeError('block_size should have type int')
     if not len(ciphertext) % block_size == 0:
-        raise ValueError('cipher length should be multiple of block size')
+        raise ValueError('ciphertext length should be multiple of block size')
     if not 1 <= num_threads <= 1000:
         raise ValueError('num_threads should be in [1, 1000]')
     if not isinstance(null_byte, (bytes, str)):
