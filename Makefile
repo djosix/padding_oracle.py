@@ -9,5 +9,5 @@ upload:
 	python3 -m twine upload --repository pypi dist/*
 
 test:
-	python3 -m pip install --quiet pytest cryptography
+	python3 -m pip install --upgrade --requirement requirements.txt
 	python3 -m pytest tests
