@@ -22,7 +22,12 @@ SOFTWARE.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Awaitable, Callable, NamedTuple, Set, Union, List
+from collections import defaultdict
+from typing import (
+    Optional, Union,
+    Awaitable, Callable,
+    NamedTuple, List, Dict, Set,
+)
 
 from .encoding import to_bytes
 
@@ -36,8 +41,7 @@ __all__ = [
 
 class Pass(NamedTuple):
     block_index: int
-    index: int
-    byte: int
+    solved: List[int]
 
 
 class Fail(NamedTuple):
@@ -46,13 +50,7 @@ class Fail(NamedTuple):
     is_critical: bool = False
 
 
-class Done(NamedTuple):
-    block_index: int
-    C0: List[int]
-    X1: List[int]
-
-
-ResultType = Union[Pass, Fail, Done]
+ResultType = Union[Pass, Fail]
 
 OracleFunc = Callable[[bytes], bool]
 ResultCallback = Callable[[ResultType], bool]
@@ -68,7 +66,7 @@ class Context(NamedTuple):
 
     tasks: Set[Awaitable[ResultType]]
 
-    latest_plaintext: List[int]
+    solved_counts: Dict[int, int]
     plaintext: List[int]
 
     result_callback: ResultCallback
@@ -122,10 +120,10 @@ async def solve_async(ciphertext: bytes,
             ctx.tasks.remove(task)
 
             if isinstance(result, Pass):
-                update_latest_plaintext(
-                    ctx, result.block_index, result.index, result.byte)
-            if isinstance(result, Done):
-                update_plaintext(ctx, result.block_index, result.C0, result.X1)
+                if len(result.solved) >= ctx.solved_counts[result.block_index]:
+                    update_plaintext(ctx, result.block_index, result.solved)
+                    ctx.solved_counts[result.block_index] = len(result.solved)
+                    ctx.plaintext_callback(ctx.plaintext)
 
         if len(ctx.tasks) == 0:
             break
@@ -151,59 +149,71 @@ def create_solve_context(ciphertext, block_size, oracle, parallel,
     for i in range(0, len(ciphertext), block_size):
         cipher_blocks.append(ciphertext[i:i+block_size])
 
+    solved_counts = defaultdict(lambda: 0)
+
     plaintext = [None] * (len(cipher_blocks) - 1) * block_size
-    latest_plaintext = plaintext.copy()
 
     executor = ThreadPoolExecutor(parallel)
     loop = asyncio.get_event_loop()
     ctx = Context(block_size, oracle, executor, loop, tasks,
-                  latest_plaintext, plaintext,
+                  solved_counts, plaintext,
                   result_callback, plaintext_callback)
 
     for i in range(1, len(cipher_blocks)):
-        run_block_task(ctx, i, cipher_blocks[i-1], cipher_blocks[i], [])
+        add_solve_block_task(ctx, i, cipher_blocks[i-1], cipher_blocks[i], [])
 
     return ctx
 
 
-def run_block_task(ctx: Context, block_index, C0, C1, X1):
-    future = solve_block(ctx, block_index, C0, C1, X1)
+def add_solve_block_task(ctx: Context, block_index: int, C0: List[int],
+                         C1: List[int], X1_suffix: List[int]):
+    future = solve_block(ctx, block_index, C0, C1, X1_suffix)
     task = ctx.loop.create_task(future)
     ctx.tasks.add(task)
 
 
 async def solve_block(ctx: Context, block_index: int, C0: List[int],
-                      C1: List[int], X1: List[int] = []) -> ResultType:
-    # X1 = decrypt(C1)
-    # P1 = xor(C0, X1)
-
-    if len(X1) == ctx.block_size:
-        return Done(block_index, C0, X1)
+                      C1: List[int], X1_suffix: List[int] = []) -> ResultType:
 
     assert len(C0) == ctx.block_size
     assert len(C1) == ctx.block_size
-    assert len(X1) in range(ctx.block_size)
+    assert len(X1_suffix) in range(ctx.block_size + 1)
 
-    index = ctx.block_size - len(X1) - 1
-    padding = len(X1) + 1
+    # X1 = decrypt(C1)
+    # P1 = xor(C0, X1)
+    C0_suffix = C0[len(C0)-len(X1_suffix):]
+    P1_suffix = [c ^ x for c, x in zip(C0_suffix, X1_suffix)]
+
+    if len(P1_suffix) < ctx.block_size:
+        result = await exploit_oracle(ctx, block_index, C0, C1, X1_suffix)
+        if isinstance(result, Fail):
+            return result
+
+    return Pass(block_index, P1_suffix)
+
+
+async def exploit_oracle(ctx: Context, block_index: int,
+                         C0: List[int], C1: List[int],
+                         X1_suffix: List[int]) -> Optional[Fail]:
+    index = ctx.block_size - len(X1_suffix) - 1
+    padding = len(X1_suffix) + 1
 
     C0_test = C0.copy()
-    for i in range(len(X1)):
-        C0_test[-i-1] = X1[-i-1] ^ padding
+    for i in range(len(X1_suffix)):
+        C0_test[-i-1] = X1_suffix[-i-1] ^ padding
     hits = list(await get_oracle_hits(ctx, C0_test, C1, index))
 
-    invalid = len(X1) == 0 and len(hits) not in (1, 2)
-    invalid |= len(X1) > 0 and len(hits) != 1
+    # Check if the number of hits is invalid
+    invalid = len(X1_suffix) == 0 and len(hits) not in (1, 2)
+    invalid |= len(X1_suffix) > 0 and len(hits) != 1
     if invalid:
-        message = 'unexpected number of hits: block={} index={} n={}' \
-            .format(block_index, index, len(hits))
+        message = f'invalid number of hits: {len(hits)}'
+        message = f'{message} (block: {block_index}, byte: {index})'
         return Fail(block_index, message)
 
     for byte in hits:
-        X1_test = [byte ^ padding, *X1]
-        run_block_task(ctx, block_index, C0, C1, X1_test)
-
-    return Pass(block_index, index, byte ^ padding ^ C0[index])
+        X1_test = [byte ^ padding, *X1_suffix]
+        add_solve_block_task(ctx, block_index, C0, C1, X1_test)
 
 
 async def get_oracle_hits(ctx: Context, C0: List[int], C1: List[int],
@@ -228,28 +238,10 @@ async def get_oracle_hits(ctx: Context, C0: List[int], C1: List[int],
     return hits
 
 
-def update_latest_plaintext(ctx: Context, block_index: int, index: int,
-                            byte: int):
-
-    i = (block_index - 1) * ctx.block_size + index
-    ctx.latest_plaintext[i] = byte
-    ctx.plaintext_callback(ctx.latest_plaintext)
-
-
-def update_plaintext(ctx: Context, block_index: int, C0: List[int],
-                     X1: List[int]):
-
-    assert len(C0) == len(X1) == ctx.block_size
-    block = compute_plaintext(C0, X1)
-
-    i = (block_index - 1) * ctx.block_size
-    ctx.latest_plaintext[i:i+ctx.block_size] = block
-    ctx.plaintext[i:i+ctx.block_size] = block
-    ctx.plaintext_callback(ctx.plaintext)
-
-
-def compute_plaintext(C0: List[int], X1: List[int]):
-    return [c ^ x for c, x in zip(C0, X1)]
+def update_plaintext(ctx: Context, block_index: int, solved_suffix: List[int]):
+    j = block_index * ctx.block_size
+    i = j - len(solved_suffix)
+    ctx.plaintext[i:j] = solved_suffix
 
 
 def convert_to_bytes(byte_list: List[int], replacement=b' '):
