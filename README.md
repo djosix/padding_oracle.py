@@ -1,37 +1,37 @@
-# padding_oracle.py
+# Padding Oracle Python Automation Script 
 
 ![python-package-badge](https://github.com/djosix/padding_oracle.py/actions/workflows/python-package.yml/badge.svg)
 
-Fast threaded [padding oracle](https://en.wikipedia.org/wiki/Padding_oracle_attack) attack automation script for Python 3.
+The padding_oracle.py is a highly efficient, threaded [padding oracle](https://en.wikipedia.org/wiki/Padding_oracle_attack) attack automation script, specifically developed for Python 3.
 
-## Install
+## Installation
 
-PyPI:
+You can install the package using either PyPI or directly from GitHub:
 
+**Via PyPI:**
 ```shell
 pip3 install -U padding_oracle
 ```
 
-GitHub:
-
+**Via GitHub:**
 ```shell
 pip3 install -U git+https://github.com/djosix/padding_oracle.py.git
 ```
 
-## Performance
+## Performance Metrics
 
-Tested on [0x09] Cathub Party from EDU-CTF:
+Performance of padding_oracle.py was evaluated using [0x09] Cathub Party from EDU-CTF:
 
-| Request Threads | Execution Time |
+| Number of Request Threads | Time Taken |
 |-----------------|----------------|
 | 1               | 17m 43s        |
 | 4               | 5m 23s         |
 | 16              | 1m 20s         |
 | 64              | 56s            |
 
-## Usage
+## How to Use 
 
-E.g. testing `https://vulnerable.website/api/?token=M9I2K9mZxzRUvyMkFRebeQzrCaMta83eAE72lMxzg94%3D`:
+To illustrate the usage, consider an example of testing `https://vulnerable.website/api/?token=M9I2K9mZxzRUvyMkFRebeQzrCaMta83eAE72lMxzg94%3D`:
 
 ```python
 from padding_oracle import padding_oracle, base64_encode, base64_decode
@@ -64,7 +64,7 @@ plaintext = padding_oracle(
 )
 ```
 
-This package also provides PHP-like encoding/decoding functions:
+In addition, the package provides PHP-like encoding/decoding functions:
 
 ```python
 from padding_oracle.encoding import (
@@ -77,6 +77,6 @@ from padding_oracle.encoding import (
 
 ## License
 
-This project is licensed under the terms of the MIT license.
+Padding Oracle Python Automation Script is distributed under the terms of the MIT license.
 
 <!-- PiuPiuPiu -->
