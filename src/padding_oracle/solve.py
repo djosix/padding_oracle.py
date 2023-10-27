@@ -38,7 +38,6 @@ __all__ = [
     'remove_padding',
 ]
 
-
 class Pass(NamedTuple):
     block_index: int
     solved: List[int]
