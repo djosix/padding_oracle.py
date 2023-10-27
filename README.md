@@ -85,8 +85,8 @@ def oracle(ciphertext: bytes):
         raise RuntimeError('unexpected behavior')
 
 def pad(data: bytes, block_size=16):
-	pad_value = block_size - len(data) % block_size
-	return text + bytearray([pad_value for i in range(pad_value)])
+    pad_value = block_size - len(data) % block_size
+    return data + bytearray([pad_value for i in range(pad_value)])
 
 payload: bytes =b"{'username':'admin'}"
 payload = pad(payload)
