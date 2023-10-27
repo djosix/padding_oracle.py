@@ -23,12 +23,12 @@ def test_padding_oracle_encryption():
 
     padder = padding.PKCS7(128).padder()
     payload = padder.update(plaintext) + padder.finalize()
-
+    
     encrypted = padding_oracle(payload, cryptor.block_size,
                                cryptor.oracle, 4, null_byte=b'?', mode='encrypt')
-    print(encrypted)
+    decrypted = cryptor.decrypt(encrypted)
 
-    assert encrypted == ciphertext
+    assert decrypted == plaintext
 
 if __name__ == '__main__':
     test_padding_oracle_basic()
