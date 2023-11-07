@@ -33,6 +33,7 @@ __all__ = [
     'padding_oracle',
 ]
 
+
 def padding_oracle(payload: Union[bytes, str],
                    block_size: int,
                    oracle: OracleFunc,
@@ -93,13 +94,13 @@ def padding_oracle(payload: Union[bytes, str],
     payload = to_bytes(payload)
     null_byte = to_bytes(null_byte)
 
-
     # Does the user want the encryption routine
     if (mode == 'encrypt'):
         return encrypt(payload, block_size, oracle, num_threads, null_byte, pad_payload, logger)
 
     # If not continue with decryption as normal
     return decrypt(payload, block_size, oracle, num_threads, null_byte, return_raw, logger)
+
 
 def decrypt(payload, block_size, oracle, num_threads, null_byte, return_raw, logger):
     # Wrapper to handle exceptions from the oracle function
@@ -171,20 +172,21 @@ def encrypt(payload, block_size, oracle, num_threads, null_byte, pad_payload, lo
 
     plaintext_blocks = blocks(payload)
     ciphertext_blocks = [null_byte * block_size for _ in range(len(plaintext_blocks)+1)]
-    
+
     solve_index = '1'
     block_total = str(len(plaintext_blocks))
 
     for index in range(len(plaintext_blocks)-1, -1, -1):
         plaintext = solve(b'\x00' * block_size + ciphertext_blocks[index+1], block_size, wrapped_oracle,
-                            num_threads, result_callback, plaintext_callback)
+                          num_threads, result_callback, plaintext_callback)
         ciphertext_blocks[index] = bytes_xor(plaintext_blocks[index], plaintext)
         solve_index = str(int(solve_index)+1)
-    
+
     ciphertext = b''.join(ciphertext_blocks)
     logger.info(f"forged ciphertext: {ciphertext}")
 
     return ciphertext
+
 
 def get_logger():
     logger = logging.getLogger('padding_oracle')

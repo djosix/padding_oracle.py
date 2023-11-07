@@ -39,6 +39,7 @@ __all__ = [
     'add_padding'
 ]
 
+
 class Pass(NamedTuple):
     block_index: int
     solved: List[int]
@@ -265,6 +266,7 @@ def remove_padding(data: Union[str, bytes, List[int]]) -> bytes:
     '''
     data = to_bytes(data)
     return data[:-data[-1]]
+
 
 def add_padding(data: Union[str, bytes, List[int]], block_size: int) -> bytes:
     '''
