@@ -21,10 +21,7 @@ def test_padding_oracle_encryption():
     plaintext = b'the quick brown fox jumps over the lazy dog'
     ciphertext = cryptor.encrypt(plaintext)
 
-    padder = padding.PKCS7(128).padder()
-    payload = padder.update(plaintext) + padder.finalize()
-    
-    encrypted = padding_oracle(payload, cryptor.block_size,
+    encrypted = padding_oracle(plaintext, cryptor.block_size,
                                cryptor.oracle, 4, null_byte=b'?', mode='encrypt')
     decrypted = cryptor.decrypt(encrypted)
 
