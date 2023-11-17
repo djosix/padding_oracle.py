@@ -36,6 +36,7 @@ __all__ = [
     'solve',
     'convert_to_bytes',
     'remove_padding',
+    'add_padding'
 ]
 
 
@@ -265,3 +266,12 @@ def remove_padding(data: Union[str, bytes, List[int]]) -> bytes:
     '''
     data = to_bytes(data)
     return data[:-data[-1]]
+
+
+def add_padding(data: Union[str, bytes, List[int]], block_size: int) -> bytes:
+    '''
+    Add PKCS#7 padding bytes.
+    '''
+    data = to_bytes(data)
+    pad_len = block_size - len(data) % block_size
+    return data + (bytes([pad_len]) * pad_len)
