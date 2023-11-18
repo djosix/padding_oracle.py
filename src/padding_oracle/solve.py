@@ -125,7 +125,7 @@ async def solve_async(
             if len(result.solved) >= ctx.solved_counts[result.block_index]:
                 update_solved(ctx, result.block_index, result.solved)
                 ctx.solved_counts[result.block_index] = len(result.solved)
-                ctx.progress_callback(list[int | None](ctx.plaintext))
+                ctx.progress_callback(ctx.plaintext)
 
         if len(ctx.tasks) == 0:
             break
