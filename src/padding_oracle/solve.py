@@ -24,38 +24,20 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
 from typing import (
-    Optional, Union,
+    Optional,
     Awaitable, Callable,
-    NamedTuple, List, Dict, Set,
+    NamedTuple,
+    cast,
 )
 
-from .encoding import to_bytes
 
-
-__all__ = [
-    'solve',
-    'convert_to_bytes',
-    'remove_padding',
-    'add_padding'
-]
-
-
-class Pass(NamedTuple):
+class BlockResult(NamedTuple):
     block_index: int
-    solved: List[int]
+    solved: list[int | None] | None = None
+    error: None | str = None
 
-
-class Fail(NamedTuple):
-    block_index: int
-    message: str
-    is_critical: bool = False
-
-
-ResultType = Union[Pass, Fail]
 
 OracleFunc = Callable[[bytes], bool]
-ResultCallback = Callable[[ResultType], bool]
-PlainTextCallback = Callable[[List[int]], bool]
 
 
 class Context(NamedTuple):
@@ -65,71 +47,83 @@ class Context(NamedTuple):
     executor: ThreadPoolExecutor
     loop: asyncio.AbstractEventLoop
 
-    tasks: Set[Awaitable[ResultType]]
+    tasks: set[Awaitable[BlockResult]]
 
-    solved_counts: Dict[int, int]
-    plaintext: List[int]
+    solved_counts: dict[int, int]
+    plaintext: list[int | None]
 
-    result_callback: ResultCallback
-    plaintext_callback: PlainTextCallback
-
-
-def dummy_callback(*a, **ka):
-    pass
+    block_callback: Callable[[BlockResult], None]
+    progress_callback: Callable[[list[int | None]], None]
 
 
-def solve(ciphertext: bytes,
-          block_size: int,
-          oracle: OracleFunc,
-          parallel: int = 1,
-          result_callback: ResultCallback = dummy_callback,
-          plaintext_callback: PlainTextCallback = dummy_callback,
-          ) -> List[int]:
+def solve(
+    ciphertext: bytes,
+    block_size: int,
+    oracle: OracleFunc,
+    parallel: int,
+    block_callback: Callable[[BlockResult], None],
+    progress_callback: Callable[[list[int | None]], None],
+) -> list[int | None]:
 
     loop = asyncio.new_event_loop()
-    future = solve_async(ciphertext, block_size, oracle, parallel,
-                         result_callback, plaintext_callback)
+    future = solve_async(
+        ciphertext,
+        block_size,
+        oracle,
+        parallel,
+        block_callback,
+        progress_callback,
+    )
+
     return loop.run_until_complete(future)
 
 
-async def solve_async(ciphertext: bytes,
-                      block_size: int,
-                      oracle: OracleFunc,
-                      parallel: int = 1,
-                      result_callback: ResultCallback = dummy_callback,
-                      plaintext_callback: PlainTextCallback = dummy_callback,
-                      ) -> List[int]:
+async def solve_async(
+    ciphertext: bytes,
+    block_size: int,
+    oracle: OracleFunc,
+    parallel: int,
+    block_callback: Callable[[BlockResult], None],
+    progess_callback: Callable[[list[int | None]], None],
+) -> list[int | None]:
 
     ciphertext = list(ciphertext)
+    assert len(ciphertext) % block_size == 0
+    assert len(ciphertext) // block_size > 1
 
-    if not len(ciphertext) % block_size == 0:
-        raise ValueError('ciphertext length must be a multiple of block_size')
-    if not len(ciphertext) // block_size > 1:
-        raise ValueError('cannot solve with only one block')
-
-    ctx = create_solve_context(ciphertext, block_size, oracle, parallel,
-                               result_callback, plaintext_callback)
+    ctx = create_solve_context(
+        ciphertext,
+        block_size,
+        oracle,
+        parallel,
+        block_callback,
+        progess_callback,
+    )
 
     while True:
-        done_tasks, _ = await asyncio.wait(ctx.tasks,
-                                           return_when=asyncio.FIRST_COMPLETED)
+        done_tasks, _ = await asyncio.wait(
+            ctx.tasks,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
 
-        for task in done_tasks:
+        for task in cast(set[Awaitable[BlockResult]], done_tasks):
             result = await task
 
-            ctx.result_callback(result)
+            ctx.block_callback(result)
             ctx.tasks.remove(task)
 
-            if isinstance(result, Pass):
-                if len(result.solved) >= ctx.solved_counts[result.block_index]:
-                    update_plaintext(ctx, result.block_index, result.solved)
-                    ctx.solved_counts[result.block_index] = len(result.solved)
-                    ctx.plaintext_callback(ctx.plaintext)
+            if result.solved is None:
+                continue
+
+            if len(result.solved) >= ctx.solved_counts[result.block_index]:
+                update_solved(ctx, result.block_index, result.solved)
+                ctx.solved_counts[result.block_index] = len(result.solved)
+                ctx.progress_callback(list[int | None](ctx.plaintext))
 
         if len(ctx.tasks) == 0:
             break
 
-    # Check if any block failed
+    # Check if any block failed.
     error_block_indices = set()
 
     for i, byte in enumerate(ctx.plaintext):
@@ -137,13 +131,19 @@ async def solve_async(ciphertext: bytes,
             error_block_indices.add(i // block_size + 1)
 
     for idx in error_block_indices:
-        result_callback(Fail(idx, f'cannot decrypt cipher block {idx}', True))
+        block_callback(BlockResult(idx, error=f'block {idx} not solved'))
 
-    return ctx.plaintext
+    return list[int | None](ctx.plaintext)
 
 
-def create_solve_context(ciphertext, block_size, oracle, parallel,
-                         result_callback, plaintext_callback) -> Context:
+def create_solve_context(
+    ciphertext: bytes,
+    block_size: int,
+    oracle: OracleFunc,
+    parallel: int,
+    block_callback: Callable[[BlockResult], None],
+    progress_callback: Callable[[list[int | None]], None],
+) -> Context:
     tasks = set()
 
     cipher_blocks = []
@@ -156,25 +156,33 @@ def create_solve_context(ciphertext, block_size, oracle, parallel,
 
     executor = ThreadPoolExecutor(parallel)
     loop = asyncio.get_event_loop()
-    ctx = Context(block_size, oracle, executor, loop, tasks,
-                  solved_counts, plaintext,
-                  result_callback, plaintext_callback)
+    ctx = Context(
+        block_size,
+        oracle,
+        executor,
+        loop,
+        tasks,
+        solved_counts,
+        plaintext,
+        block_callback,
+        progress_callback,
+    )
 
-    for i in range(1, len(cipher_blocks)):
-        add_solve_block_task(ctx, i, cipher_blocks[i-1], cipher_blocks[i], [])
+    for i in range(len(cipher_blocks)-1):
+        add_solve_block_task(ctx, i+1, cipher_blocks[i], cipher_blocks[i+1], [])
 
     return ctx
 
 
-def add_solve_block_task(ctx: Context, block_index: int, C0: List[int],
-                         C1: List[int], X1_suffix: List[int]):
+def add_solve_block_task(ctx: Context, block_index: int, C0: list[int],
+                         C1: list[int], X1_suffix: list[int]):
     future = solve_block(ctx, block_index, C0, C1, X1_suffix)
     task = ctx.loop.create_task(future)
     ctx.tasks.add(task)
 
 
-async def solve_block(ctx: Context, block_index: int, C0: List[int],
-                      C1: List[int], X1_suffix: List[int] = []) -> ResultType:
+async def solve_block(ctx: Context, block_index: int, C0: list[int],
+                      C1: list[int], X1_suffix: list[int] = []) -> BlockResult:
 
     assert len(C0) == ctx.block_size
     assert len(C1) == ctx.block_size
@@ -187,15 +195,15 @@ async def solve_block(ctx: Context, block_index: int, C0: List[int],
 
     if len(P1_suffix) < ctx.block_size:
         result = await exploit_oracle(ctx, block_index, C0, C1, X1_suffix)
-        if isinstance(result, Fail):
+        if result is not None and result.error is not None:
             return result
 
-    return Pass(block_index, P1_suffix)
+    return BlockResult(block_index, P1_suffix)
 
 
 async def exploit_oracle(ctx: Context, block_index: int,
-                         C0: List[int], C1: List[int],
-                         X1_suffix: List[int]) -> Optional[Fail]:
+                         C0: list[int], C1: list[int],
+                         X1_suffix: list[int]) -> Optional[BlockResult]:
     index = ctx.block_size - len(X1_suffix) - 1
     padding = len(X1_suffix) + 1
 
@@ -204,21 +212,24 @@ async def exploit_oracle(ctx: Context, block_index: int,
         C0_test[-i-1] = X1_suffix[-i-1] ^ padding
     hits = list(await get_oracle_hits(ctx, C0_test, C1, index))
 
-    # Check if the number of hits is invalid
+    # Check if the number of hits is invalid.
     invalid = len(X1_suffix) == 0 and len(hits) not in (1, 2)
     invalid |= len(X1_suffix) > 0 and len(hits) != 1
     if invalid:
-        message = f'invalid number of hits: {len(hits)}'
-        message = f'{message} (block: {block_index}, byte: {index})'
-        return Fail(block_index, message)
+        message = f'invalid number of hits: {len(hits)} (block: {block_index}, byte: {index})'
+        return BlockResult(block_index, message)
 
     for byte in hits:
         X1_test = [byte ^ padding, *X1_suffix]
         add_solve_block_task(ctx, block_index, C0, C1, X1_test)
 
 
-async def get_oracle_hits(ctx: Context, C0: List[int], C1: List[int],
-                          index: int):
+async def get_oracle_hits(
+    ctx: Context,
+    C0: list[int],
+    C1: list[int],
+    index: int,
+) -> list[int]:
 
     C0 = C0.copy()
     futures = {}
@@ -239,39 +250,7 @@ async def get_oracle_hits(ctx: Context, C0: List[int], C1: List[int],
     return hits
 
 
-def update_plaintext(ctx: Context, block_index: int, solved_suffix: List[int]):
+def update_solved(ctx: Context, block_index: int, solved_suffix: list[int]):
     j = block_index * ctx.block_size
     i = j - len(solved_suffix)
     ctx.plaintext[i:j] = solved_suffix
-
-
-def convert_to_bytes(byte_list: List[int], replacement=b' '):
-    '''
-    Convert a list of int into bytes, replace invalid byte with replacement.
-    '''
-    for i, byte in enumerate(list(byte_list)):
-        if isinstance(byte, int) and byte in range(256):
-            pass
-        elif isinstance(byte, bytes):
-            byte = ord(byte)
-        else:
-            byte = ord(replacement)
-        byte_list[i] = byte
-    return bytes(byte_list)
-
-
-def remove_padding(data: Union[str, bytes, List[int]]) -> bytes:
-    '''
-    Remove PKCS#7 padding bytes.
-    '''
-    data = to_bytes(data)
-    return data[:-data[-1]]
-
-
-def add_padding(data: Union[str, bytes, List[int]], block_size: int) -> bytes:
-    '''
-    Add PKCS#7 padding bytes.
-    '''
-    data = to_bytes(data)
-    pad_len = block_size - len(data) % block_size
-    return data + (bytes([pad_len]) * pad_len)

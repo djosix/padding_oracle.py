@@ -20,36 +20,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-from .padding_oracle import (
-    decrypt,
-    encrypt,
-)
-from .utils import (
-    to_bytes,
-    to_str,
-    base64_encode,
-    base64_decode,
-    urlencode,
-    urldecode,
-    remove_padding,
-    add_padding,
-)
-from .logger import Logger, default_logger, nop_logger
-from .solve import solve
+from typing import Callable
 
 __all__ = [
-    'decrypt',
-    'encrypt',
-    'to_bytes',
-    'to_str',
-    'base64_encode',
-    'base64_decode',
-    'urlencode',
-    'urldecode',
-    'remove_padding',
-    'add_padding',
-    'solve',
     'Logger',
     'default_logger',
     'nop_logger',
 ]
+
+Logger = Callable[[str, str], None]
+
+
+def default_logger(kind: str, message: str):
+    print(f'[{kind}] {message}')
+
+
+def nop_logger(kind: str, message: str):
+    pass

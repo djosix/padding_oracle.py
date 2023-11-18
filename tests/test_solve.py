@@ -2,8 +2,7 @@ from concurrent.futures import ProcessPoolExecutor
 import os
 import multiprocessing as mp
 
-from padding_oracle import remove_padding
-from padding_oracle.solve import solve
+from padding_oracle import solve, remove_padding
 from .cryptor import VulnerableCryptor
 
 VERBOSE = False
@@ -15,10 +14,19 @@ def _test_solve(data_size):
     plaintext = os.urandom(data_size)
     ciphertext = crypter.encrypt(plaintext)
 
-    decrypted = solve(list(ciphertext), crypter.block_size, crypter.oracle)
-    decrypted = remove_padding(decrypted)
+    def nop_callback(*args, **kwargs):
+        pass
 
-    assert plaintext == decrypted, 'decryption failed'
+    solved = solve(
+        ciphertext,
+        crypter.block_size,
+        crypter.oracle,
+        parallel=4,
+        block_callback=nop_callback,
+        progress_callback=nop_callback,
+    )
+
+    assert plaintext == remove_padding(solved), 'decryption failed'
 
 
 def test_solve_basic():
