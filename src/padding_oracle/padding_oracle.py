@@ -65,6 +65,7 @@ def encrypt(
     plaintext: bytes | str,
     block_size: int,
     oracle: OracleFunc,
+    num_threads: int = 1,
     logger: Logger = default_logger,
 ) -> bytes:
     plaintext = to_bytes(plaintext)
@@ -81,7 +82,7 @@ def encrypt(
             iv + cipher_blocks[i],
             block_size,
             oracle,
-            1,
+            num_threads,
             block_error_logger(logger),
             encrypt_progress_logger(logger, i+1, len(plain_blocks)),
         )

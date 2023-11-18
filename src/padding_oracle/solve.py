@@ -30,11 +30,22 @@ from typing import (
     cast,
 )
 
+__all__ = [
+    'solve',
+]
 
-class BlockResult(NamedTuple):
-    block_index: int
-    solved: list[int | None] | None = None
-    error: None | str = None
+
+class BlockResult:
+    def __init__(
+        self,
+        block_index: int,
+        *,
+        solved: list[int | None] | None = None,
+        error: None | str = None,
+    ):
+        self.block_index = block_index
+        self.solved = solved
+        self.error = error
 
 
 OracleFunc = Callable[[bytes], bool]
@@ -60,7 +71,7 @@ def solve(
     ciphertext: bytes,
     block_size: int,
     oracle: OracleFunc,
-    parallel: int,
+    num_threads: int,
     block_callback: Callable[[BlockResult], None],
     progress_callback: Callable[[list[int | None]], None],
 ) -> list[int | None]:
@@ -70,7 +81,7 @@ def solve(
         ciphertext,
         block_size,
         oracle,
-        parallel,
+        num_threads,
         block_callback,
         progress_callback,
     )
@@ -82,7 +93,7 @@ async def solve_async(
     ciphertext: bytes,
     block_size: int,
     oracle: OracleFunc,
-    parallel: int,
+    num_threads: int,
     block_callback: Callable[[BlockResult], None],
     progess_callback: Callable[[list[int | None]], None],
 ) -> list[int | None]:
@@ -95,7 +106,7 @@ async def solve_async(
         ciphertext,
         block_size,
         oracle,
-        parallel,
+        num_threads,
         block_callback,
         progess_callback,
     )
@@ -115,10 +126,10 @@ async def solve_async(
             if result.solved is None:
                 continue
 
-            if len(result.solved) >= ctx.solved_counts[result.block_index]:
+            if len(result.solved) > ctx.solved_counts[result.block_index]:
                 update_solved(ctx, result.block_index, result.solved)
                 ctx.solved_counts[result.block_index] = len(result.solved)
-                ctx.progress_callback(list[int | None](ctx.plaintext))
+                ctx.progress_callback(ctx.plaintext)
 
         if len(ctx.tasks) == 0:
             break
@@ -140,7 +151,7 @@ def create_solve_context(
     ciphertext: bytes,
     block_size: int,
     oracle: OracleFunc,
-    parallel: int,
+    num_threads: int,
     block_callback: Callable[[BlockResult], None],
     progress_callback: Callable[[list[int | None]], None],
 ) -> Context:
@@ -154,7 +165,7 @@ def create_solve_context(
 
     plaintext = [None] * (len(cipher_blocks) - 1) * block_size
 
-    executor = ThreadPoolExecutor(parallel)
+    executor = ThreadPoolExecutor(num_threads)
     loop = asyncio.get_event_loop()
     ctx = Context(
         block_size,
@@ -198,7 +209,7 @@ async def solve_block(ctx: Context, block_index: int, C0: list[int],
         if result is not None and result.error is not None:
             return result
 
-    return BlockResult(block_index, P1_suffix)
+    return BlockResult(block_index, solved=P1_suffix)
 
 
 async def exploit_oracle(ctx: Context, block_index: int,
@@ -217,7 +228,7 @@ async def exploit_oracle(ctx: Context, block_index: int,
     invalid |= len(X1_suffix) > 0 and len(hits) != 1
     if invalid:
         message = f'invalid number of hits: {len(hits)} (block: {block_index}, byte: {index})'
-        return BlockResult(block_index, message)
+        return BlockResult(block_index, error=message)
 
     for byte in hits:
         X1_test = [byte ^ padding, *X1_suffix]

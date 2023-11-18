@@ -64,12 +64,17 @@ plaintext = decrypt(
 
 ### Encryption
 
-Below is an example demonstrating how to encrypt arbitrary bytes. For a detailed understanding of the process, please refer to [this Pull Request](https://github.com/djosix/padding_oracle.py/pull/4). Keep in mind that, unlike the decryption process, this functionality cannot be parallelized.
+Below is an example demonstrating how to encrypt arbitrary bytes. For a detailed understanding of the process, please refer to [this Pull Request](https://github.com/djosix/padding_oracle.py/pull/4).
 
 ```python
 from padding_oracle import encrypt
 
-ciphertext = encrypt(b'YourTextHere', block_size=16, oracle=oracle)
+ciphertext = encrypt(
+    b'YourTextHere', 
+    block_size=16,
+    oracle=oracle,
+    num_threads=16,
+)
 ```
 
 ### Customized Logging
@@ -105,6 +110,10 @@ The script also includes PHP-like encoding and decoding functions:
 ```python
 from padding_oracle.encoding import urlencode, urldecode, base64_encode, base64_decode
 ```
+
+### TODO
+
+- [ ] Support more padding schemes
 
 ## License
 

@@ -40,7 +40,10 @@ def to_bytes(data: str | bytes | list[int]) -> bytes:
 
 
 def to_bytes_with_default(maybe_bytes: list[int | None], default: bytes = b' ') -> bytes:
-    return [default if b is None else b for b in maybe_bytes]
+    return bytes([
+        ord(default) if (b is None or b not in range(256)) else b
+        for b in maybe_bytes
+    ])
 
 
 def to_bytes_ensure_complete(maybe_bytes: list[int | None]) -> bytes:
