@@ -111,6 +111,10 @@ The script also includes PHP-like encoding and decoding functions:
 from padding_oracle.encoding import urlencode, urldecode, base64_encode, base64_decode
 ```
 
+### TODO
+
+- [ ] Support more padding schemes
+
 ## License
 
 This script is distributed under the MIT license.
