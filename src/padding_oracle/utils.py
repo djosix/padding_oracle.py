@@ -1,5 +1,5 @@
 '''
-Copyright (c) 2022 Yuankui Li
+Copyright (c) 2023 Yuankui Li
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,16 +22,15 @@ SOFTWARE.
 
 import base64
 import urllib.parse
-from typing import List, Union
 
 __all__ = [
+    'to_bytes', 'to_str',
     'base64_encode', 'base64_decode',
     'urlencode', 'urldecode',
-    'to_bytes', 'to_str'
 ]
 
 
-def to_bytes(data: Union[str, bytes, List[int]]) -> bytes:
+def to_bytes(data: str | bytes | list[int]) -> bytes:
     if isinstance(data, str):
         data = data.encode()
     elif isinstance(data, list):
@@ -40,7 +39,18 @@ def to_bytes(data: Union[str, bytes, List[int]]) -> bytes:
     return data
 
 
-def to_str(data: Union[str, bytes, List[int]]) -> str:
+def to_bytes_with_default(maybe_bytes: list[int | None], default: bytes = b' ') -> bytes:
+    return [default if b is None else b for b in maybe_bytes]
+
+
+def to_bytes_ensure_complete(maybe_bytes: list[int | None]) -> bytes:
+    for b in maybe_bytes:
+        assert b is not None
+        assert isinstance(b, int) and b in range(256)
+    return bytes(maybe_bytes)
+
+
+def to_str(data: str | bytes | list[int]) -> str:
     if isinstance(data, list):
         data = bytes(data)
     if isinstance(data, bytes):
@@ -52,21 +62,38 @@ def to_str(data: Union[str, bytes, List[int]]) -> str:
     return data
 
 
-def base64_decode(data: Union[str, bytes, List[int]]) -> bytes:
+def base64_decode(data: str | bytes | list[int]) -> bytes:
     data = to_bytes(data)
     return base64.b64decode(data)
 
 
-def base64_encode(data: Union[str, bytes, List[int]]) -> str:
+def base64_encode(data: str | bytes | list[int]) -> str:
     data = to_bytes(data)
     return base64.b64encode(data).decode()
 
 
-def urlencode(data: Union[str, bytes, List[int]]) -> str:
+def urlencode(data: str | bytes | list[int]) -> str:
     data = to_bytes(data)
     return urllib.parse.quote(data)
 
 
-def urldecode(data: Union[str, bytes, List[int]]) -> bytes:
+def urldecode(data: str | bytes | list[int]) -> bytes:
     data = to_str(data)
     return urllib.parse.unquote_plus(data)
+
+
+def remove_padding(data: str | bytes | list[int]) -> bytes:
+    '''
+    Remove PKCS#7 padding bytes.
+    '''
+    data = to_bytes(data)
+    return data[:-data[-1]]
+
+
+def add_padding(data: str | bytes | list[int], block_size: int) -> bytes:
+    '''
+    Add PKCS#7 padding bytes.
+    '''
+    data = to_bytes(data)
+    pad_len = block_size - len(data) % block_size
+    return data + (bytes([pad_len]) * pad_len)
