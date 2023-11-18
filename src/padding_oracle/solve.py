@@ -30,6 +30,10 @@ from typing import (
     cast,
 )
 
+__all__ = [
+    'solve',
+]
+
 
 class BlockResult:
     def __init__(
