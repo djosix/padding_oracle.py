@@ -21,7 +21,7 @@ def _test_solve(data_size):
         ciphertext,
         crypter.block_size,
         crypter.oracle,
-        parallel=4,
+        num_threads=4,
         block_callback=nop_callback,
         progress_callback=nop_callback,
     )

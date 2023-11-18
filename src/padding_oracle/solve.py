@@ -60,7 +60,7 @@ def solve(
     ciphertext: bytes,
     block_size: int,
     oracle: OracleFunc,
-    parallel: int,
+    num_threads: int,
     block_callback: Callable[[BlockResult], None],
     progress_callback: Callable[[list[int | None]], None],
 ) -> list[int | None]:
@@ -70,7 +70,7 @@ def solve(
         ciphertext,
         block_size,
         oracle,
-        parallel,
+        num_threads,
         block_callback,
         progress_callback,
     )
@@ -82,7 +82,7 @@ async def solve_async(
     ciphertext: bytes,
     block_size: int,
     oracle: OracleFunc,
-    parallel: int,
+    num_threads: int,
     block_callback: Callable[[BlockResult], None],
     progess_callback: Callable[[list[int | None]], None],
 ) -> list[int | None]:
@@ -95,7 +95,7 @@ async def solve_async(
         ciphertext,
         block_size,
         oracle,
-        parallel,
+        num_threads,
         block_callback,
         progess_callback,
     )
@@ -140,7 +140,7 @@ def create_solve_context(
     ciphertext: bytes,
     block_size: int,
     oracle: OracleFunc,
-    parallel: int,
+    num_threads: int,
     block_callback: Callable[[BlockResult], None],
     progress_callback: Callable[[list[int | None]], None],
 ) -> Context:
@@ -154,7 +154,7 @@ def create_solve_context(
 
     plaintext = [None] * (len(cipher_blocks) - 1) * block_size
 
-    executor = ThreadPoolExecutor(parallel)
+    executor = ThreadPoolExecutor(num_threads)
     loop = asyncio.get_event_loop()
     ctx = Context(
         block_size,
