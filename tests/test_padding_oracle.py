@@ -27,6 +27,7 @@ def test_padding_oracle_encrypt():
         plaintext,
         cryptor.block_size,
         cryptor.oracle,
+        num_threads=4,
     )
 
     assert cryptor.decrypt(encrypted) == plaintext
