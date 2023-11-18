@@ -126,7 +126,7 @@ async def solve_async(
             if result.solved is None:
                 continue
 
-            if len(result.solved) >= ctx.solved_counts[result.block_index]:
+            if len(result.solved) > ctx.solved_counts[result.block_index]:
                 update_solved(ctx, result.block_index, result.solved)
                 ctx.solved_counts[result.block_index] = len(result.solved)
                 ctx.progress_callback(ctx.plaintext)
