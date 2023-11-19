@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  challenge:
+    image: php:7-apache
+    volumes:
+      - ./challenge:/var/www/html:ro
+    ports:
+      - 8887:80
+
+networks:
+  internal:
+    driver: bridge
