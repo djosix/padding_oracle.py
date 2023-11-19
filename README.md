@@ -4,6 +4,18 @@
 
 This script automates padding oracle attacks in Python, offering efficient and threaded execution.
 
+- [Padding Oracle Automation in Python](#padding-oracle-automation-in-python)
+  * [Installation](#installation)
+  * [Performance](#performance)
+  * [Usage](#usage)
+    + [Decryption](#decryption)
+    + [Encryption](#encryption)
+    + [Customized Logging](#customized-logging)
+    + [Extras](#extras)
+  * [Example](#example)
+  * [To-Do](#to-do)
+  * [License](#license)
+
 ## Installation
 
 You can install the script using one of these methods:
@@ -111,7 +123,11 @@ The script also includes PHP-like encoding and decoding functions:
 from padding_oracle.encoding import urlencode, urldecode, base64_encode, base64_decode
 ```
 
-### TODO
+## Example
+
+See the `example` folder.
+
+## To-Do
 
 - [ ] Support more padding schemes
 
