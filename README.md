@@ -120,7 +120,7 @@ Both `encrypt` and `decrypt` allow user to inject a custom logger:
 The script also includes PHP-like encoding and decoding functions:
 
 ```python
-from padding_oracle.encoding import urlencode, urldecode, base64_encode, base64_decode
+from padding_oracle import urlencode, urldecode, base64_encode, base64_decode
 ```
 
 ## Example
