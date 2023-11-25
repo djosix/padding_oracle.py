@@ -125,7 +125,7 @@ from padding_oracle import urlencode, urldecode, base64_encode, base64_decode
 
 ## Example
 
-See the `example` folder.
+See the [`example/`](example) folder.
 
 ## To-Do
 
